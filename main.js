@@ -14,7 +14,8 @@ async function scrapeBourseDirectData() {
     await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
     const csvFilePath = 'titres_PEA.csv';
-    fs.writeFileSync(csvFilePath, 'Nom,ISIN,Type\n');
+    // Mise à jour de l'en-tête CSV pour inclure les nouvelles colonnes
+    fs.writeFileSync(csvFilePath, 'Nom,ISIN,Type,Volume,Prix,URL\n');
 
     await page.goto('https://www.boursedirect.fr/fr/marches/recherche?pea=true', {
       waitUntil: 'networkidle2',
@@ -83,7 +84,7 @@ async function scrapeBourseDirectData() {
         const escapedName = item.name.replace(/,/g, ' ');
         
         // Format CSV sans guillemets autour du nom
-        return `${escapedName},${item.isin},${item.type}`;
+        return `${escapedName},${item.isin},${item.type},${item.volume},${item.price},${item.url}`;
       }).join('\n');
       
       fs.appendFileSync(csvFilePath, csvContent + '\n');
@@ -110,6 +111,16 @@ async function scrapeBourseDirectData() {
             // Chercher typeBadge dans body-instrument
             const typeElement = bodyElement ? bodyElement.querySelector('span.typeBadge') : null;
             
+            // Nouveaux éléments à récupérer
+            // Volume
+            const volumeElement = instrumentContainer.querySelector('.bd-streaming-select-value-cumulative-volume');
+            
+            // Prix
+            const priceElement = instrumentContainer.querySelector('.quotation-last.bd-streaming-select-value-last');
+            
+            // URL du titre
+            const urlElement = bodyElement ? bodyElement.querySelector('a.moreDetails') : null;
+            
             if (titleElement && isinElement) {
               let nameText = '';
               for (const node of titleElement.childNodes) {
@@ -122,10 +133,22 @@ async function scrapeBourseDirectData() {
               // ainsi que tous les guillemets à l'intérieur
               const cleanName = nameText.trim().replace(/"/g, '');
               
+              // Nettoyer le volume (enlever les espaces)
+              const volume = volumeElement ? volumeElement.textContent.trim().replace(/\s+/g, '') : "N/A";
+              
+              // Obtenir le prix
+              const price = priceElement ? priceElement.textContent.trim() : "N/A";
+              
+              // Obtenir l'URL
+              const url = urlElement ? urlElement.getAttribute('href') : "N/A";
+              
               instruments.push({
                 name: cleanName,
                 isin: isinElement.textContent.trim(),
-                type: typeElement ? typeElement.textContent.trim() : "Non spécifié"
+                type: typeElement ? typeElement.textContent.trim() : "Non spécifié",
+                volume: volume,
+                price: price,
+                url: url
               });
             }
           }
@@ -144,6 +167,20 @@ async function scrapeBourseDirectData() {
             
             const typeElement = bodyElement ? bodyElement.querySelector('span.typeBadge') : null;
             
+            // Récupérer les nouveaux éléments
+            const instrumentContainer = headElement.closest('.instrument, .instrument-item, .instrument-container');
+            
+            // Volume
+            const volumeElement = instrumentContainer ? 
+                instrumentContainer.querySelector('.bd-streaming-select-value-cumulative-volume') : null;
+            
+            // Prix
+            const priceElement = instrumentContainer ? 
+                instrumentContainer.querySelector('.quotation-last.bd-streaming-select-value-last') : null;
+            
+            // URL du titre
+            const urlElement = bodyElement ? bodyElement.querySelector('a.moreDetails') : null;
+            
             if (titleElement && isinElement) {
               let nameText = '';
               for (const node of titleElement.childNodes) {
@@ -155,10 +192,22 @@ async function scrapeBourseDirectData() {
               // Nettoyer le nom en supprimant tous les guillemets
               const cleanName = nameText.trim().replace(/"/g, '');
               
+              // Nettoyer le volume (enlever les espaces)
+              const volume = volumeElement ? volumeElement.textContent.trim().replace(/\s+/g, '') : "N/A";
+              
+              // Obtenir le prix
+              const price = priceElement ? priceElement.textContent.trim() : "N/A";
+              
+              // Obtenir l'URL
+              const url = urlElement ? urlElement.getAttribute('href') : "N/A";
+              
               instruments.push({
                 name: cleanName,
                 isin: isinElement.textContent.trim(),
-                type: typeElement ? typeElement.textContent.trim() : "Non spécifié"
+                type: typeElement ? typeElement.textContent.trim() : "Non spécifié",
+                volume: volume,
+                price: price,
+                url: url
               });
             }
           });
